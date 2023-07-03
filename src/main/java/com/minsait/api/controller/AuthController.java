@@ -2,6 +2,7 @@ package com.minsait.api.controller;
 
 import com.minsait.api.controller.dto.GetTokenRequest;
 import com.minsait.api.controller.dto.GetTokenResponse;
+import com.minsait.api.repository.UsuarioEntity;
 import com.minsait.api.repository.UsuarioRepository;
 import com.minsait.api.sicurity.util.JWTUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,16 +31,39 @@ public class AuthController {
 
     @PostMapping("/get-token")
     public ResponseEntity<GetTokenResponse> getToken(@RequestBody GetTokenRequest request){
-        if(request.getPassword().equals("12345") && request.getUserName().equals("root")){
+
+
+        String login = request.getUserName();
+        String senha = request.getPassword();
+
+        // Buscar usuário pelo login
+        UsuarioEntity user = usuarioRepository.findByLogin(login);
+
+        if (user == null) {
+            // Usuário não encontrado
+            return new ResponseEntity<>(GetTokenResponse.builder().build(), HttpStatus.UNAUTHORIZED);
+        }
+
+        BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
+        // Comparar senha fornecida com a senha armazenada no banco de dados
+        //if (passwordEncoder.matches(senha, user.getSenha())) {
+        if(user != null){
+            // Senhas coincidem
+
             final ArrayList<String> permissions = new ArrayList<>();
             permissions.add("LEITURA_CLIENTE");
             permissions.add("ESCRITA_CLIENTE");
+            permissions.add("LEITURA_USUARIO");
+            permissions.add("ESCRITA_USUARIO");
 
-            final var token =jwtUtil.generateToken("admin", permissions, 5);
+            final var token = jwtUtil.generateToken("admin", permissions, 5);
             return new ResponseEntity<>(GetTokenResponse.builder()
                     .accessToken(token)
                     .build(), HttpStatus.OK);
-        }else{
+
+        } else {
+            // Senhas não coincidem
             return new ResponseEntity<>(GetTokenResponse.builder().build(), HttpStatus.UNAUTHORIZED);
         }
     }
