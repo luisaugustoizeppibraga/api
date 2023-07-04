@@ -15,9 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
 
 @RestController
 @RequestMapping(value = "/auth")
@@ -30,40 +27,23 @@ public class AuthController {
     JWTUtil jwtUtil;
 
     @PostMapping("/get-token")
-    public ResponseEntity<GetTokenResponse> getToken(@RequestBody GetTokenRequest request){
-
-
-        String login = request.getUserName();
-        String senha = request.getPassword();
+    public ResponseEntity<GetTokenResponse> getToken(@RequestBody GetTokenRequest request) {
 
         // Buscar usuário pelo login
-        UsuarioEntity user = usuarioRepository.findByLogin(login);
-
-        if (user == null) {
-            // Usuário não encontrado
-            return new ResponseEntity<>(GetTokenResponse.builder().build(), HttpStatus.UNAUTHORIZED);
-        }
+        UsuarioEntity user = usuarioRepository.findByLogin(request.getUserName());
 
         BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-        // Comparar senha fornecida com a senha armazenada no banco de dados
-        //if (passwordEncoder.matches(senha, user.getSenha())) {
-        if(user != null){
-            // Senhas coincidem
-
+        if (user instanceof UsuarioEntity && passwordEncoder.matches(request.getPassword(), user.getSenha())) {
             final ArrayList<String> permissions = new ArrayList<>();
             permissions.add("LEITURA_CLIENTE");
             permissions.add("ESCRITA_CLIENTE");
-            permissions.add("LEITURA_USUARIO");
-            permissions.add("ESCRITA_USUARIO");
 
-            final var token = jwtUtil.generateToken("admin", permissions, 5);
+            final var token = jwtUtil.generateToken(user.getLogin(), permissions, user.getId().intValue());
             return new ResponseEntity<>(GetTokenResponse.builder()
                     .accessToken(token)
                     .build(), HttpStatus.OK);
-
         } else {
-            // Senhas não coincidem
             return new ResponseEntity<>(GetTokenResponse.builder().build(), HttpStatus.UNAUTHORIZED);
         }
     }
